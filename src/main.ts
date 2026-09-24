@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { app, BrowserWindow, globalShortcut, desktopCapturer, ipcMain, screen } from 'electron';
 import { createWorker, PSM } from 'tesseract.js';
+import * as deepl from 'deepl-node';
 
 let mainWindow: BrowserWindow | null = null;
 let captureWindow: BrowserWindow | null = null;
@@ -19,15 +20,19 @@ async function getOcrWorker() {
   return ocrWorker;
 }
 
+const authKey = "220ccf10-fbb9-41f2-8336-b4e41e3532e9:fx"; // replace with your key
+const deeplClient = new deepl.DeepLClient(authKey);
+
 async function translate(text: string): Promise<string> {
   try {
-    const res = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const data = await res.json();
-    let out = '';
-    data?.[0]?.forEach((item: any) => { if (item[0]) out += item[0]; });
-    return out || 'Çeviri yapılamadı.';
+    // const res = await fetch(
+    //   `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(text)}`
+    // );
+    // const data = await res.json();
+     const result = await deeplClient.translateText(text, 'en', 'tr');
+    // let out = '';
+    // data?.[0]?.forEach((item: any) => { if (item[0]) out += item[0]; });
+    return result.text || 'Çeviri yapılamadı.';
   } catch {
     return 'Çeviri servisine ulaşılamadı.';
   }
