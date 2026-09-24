@@ -4,95 +4,195 @@
 <head>
   <meta charset="UTF-8">
   <title>Çeviri Paneli</title>
+
   <style>
     html,
     body {
       margin: 0;
+      width: 100%;
       height: 100%;
+      overflow: hidden;
       background: transparent;
-      font-family: Segoe UI, sans-serif;
+      font-family: "Segoe UI", sans-serif;
       user-select: none;
     }
 
     #panel {
       position: relative;
+
       box-sizing: border-box;
+      width: 100%;
       height: 100%;
+
       padding: 10px 14px;
+
       display: flex;
       flex-direction: column;
-      background: rgba(15, 23, 42, 0.88);
-      color: #f1f5f9;
-      border: 1px solid #0ea5e9;
-      border-radius: 10px;
+
+      background: rgba(0, 0, 0, 0.62);
+
+      color: rgba(255, 255, 255, 0.95);
+
+      border: none;
+      border-radius: 8px;
+
       overflow: hidden;
+
+      box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.25);
+
+      cursor: default;
     }
+
+    /* ------------------------- */
+    /* TOOLBAR */
+    /* ------------------------- */
 
     #toolbar {
       display: none;
+
       align-items: center;
+
       gap: 6px;
+
       margin-bottom: 8px;
+
+      flex-shrink: 0;
+
+      position: relative;
+      z-index: 10;
     }
 
     #panel.edit #toolbar {
       display: flex;
     }
 
-    #panel.edit {
-      border-color: #f59e0b;
-    }
-
     #handle {
       flex: 1;
+
       cursor: move;
+
       font-size: 12px;
+
       color: #fbbf24;
+
       padding: 4px 0;
+
+      white-space: nowrap;
     }
 
+    /* ------------------------- */
+    /* BUTTONS */
+    /* ------------------------- */
+
     button {
-      background: #1e293b;
-      color: #f1f5f9;
-      border: 1px solid #475569;
-      border-radius: 6px;
-      padding: 2px 8px;
+      border: none;
+
+      border-radius: 4px;
+
+      background: rgba(255, 255, 255, 0.12);
+
+      color: white;
+
+      padding: 3px 8px;
+
       cursor: pointer;
-      font-size: 13px;
     }
 
     button:hover {
-      background: #334155;
+      background: rgba(255, 255, 255, 0.22);
     }
 
+    /* ------------------------- */
+    /* STATUS */
+    /* ------------------------- */
+
     #status {
+      flex-shrink: 0;
+
       font-size: 11px;
-      color: #7dd3fc;
-      margin-bottom: 4px;
+
+      color: rgba(255, 255, 255, 0.65);
+
+      margin-bottom: 5px;
+
+      pointer-events: none;
     }
+
+    /* ------------------------- */
+    /* TRANSLATION */
+    /* ------------------------- */
 
     #translated {
       flex: 1;
+
+      min-height: 0;
+
       overflow-y: auto;
-      line-height: 1.4;
+
+      line-height: 1.45;
+
       font-size: 18px;
+
+      color: rgba(255, 255, 255, 0.96);
+
       user-select: text;
+
+      pointer-events: auto;
+
+      text-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.9);
     }
+
+    /* ------------------------- */
+    /* RESIZE GRIP */
+    /* ------------------------- */
 
     #grip {
       display: none;
+
       position: absolute;
+
       right: 0;
       bottom: 0;
-      width: 18px;
-      height: 18px;
+
+      width: 30px;
+      height: 30px;
+
       cursor: nwse-resize;
-      background: linear-gradient(135deg, transparent 50%, #f59e0b 50%);
+
+      z-index: 9999;
+
+      background:
+        linear-gradient(135deg,
+          transparent 45%,
+          rgba(255, 255, 255, 0.35) 46%,
+          rgba(255, 255, 255, 0.35) 52%,
+          transparent 53%),
+        linear-gradient(135deg,
+          transparent 60%,
+          rgba(255, 255, 255, 0.60) 61%,
+          rgba(255, 255, 255, 0.60) 67%,
+          transparent 68%);
     }
 
     #panel.edit #grip {
       display: block;
     }
+
+    /* ------------------------- */
+    /* EDIT MODE */
+    /* ------------------------- */
+
+    #panel.edit {
+      box-shadow:
+        0 0 0 1px rgba(245, 158, 11, 0.75),
+        0 4px 18px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ------------------------- */
+    /* HIDDEN */
+    /* ------------------------- */
 
     #panel.hidden {
       display: none;
@@ -101,139 +201,313 @@
 </head>
 
 <body>
+
   <div id="panel">
+
     <div id="toolbar">
-      <div id="handle">☰ Taşı — Alt+E ile oyuna dön</div>
+
+      <div id="handle">
+        ☰ Taşı — Alt+E ile oyuna dön
+      </div>
+
       <button id="fMinus">A−</button>
       <button id="fPlus">A+</button>
+
     </div>
-    <div id="status">Hazır — Alt+T ile alan seç</div>
+
+    <div id="status">
+      Hazır — Alt+T ile alan seç
+    </div>
+
     <div id="translated"></div>
+
     <div id="grip"></div>
+
   </div>
 
   <script>
-    const panel = document.getElementById('panel');
-    const status = document.getElementById('status');
-    const translated = document.getElementById('translated');
 
-    // Yazı boyutu (kaydedilir)
-    let fontSize = parseInt(localStorage.getItem('fontSize') || '18', 10);
+    const panel = document.getElementById("panel");
+    const status = document.getElementById("status");
+    const translated = document.getElementById("translated");
+
+
+    // -------------------------
+    // FONT SIZE
+    // -------------------------
+
+    let fontSize = parseInt(
+      localStorage.getItem("fontSize") || "18",
+      10
+    );
+
     function applyFont() {
-      translated.style.fontSize = fontSize + 'px';
-      localStorage.setItem('fontSize', fontSize);
+
+      translated.style.fontSize =
+        fontSize + "px";
+
+      localStorage.setItem(
+        "fontSize",
+        fontSize
+      );
     }
+
     applyFont();
-    document.getElementById('fPlus').onclick = () => { fontSize = Math.min(48, fontSize + 2); applyFont(); };
-    document.getElementById('fMinus').onclick = () => { fontSize = Math.max(10, fontSize - 2); applyFont(); };
 
-    // Taşıma ve boyutlandırma
-    // function makeDrag(el, onDelta) {
-    //   el.addEventListener('pointerdown', (e) => {
-    //     el.setPointerCapture(e.pointerId);
-    //     let lx = e.screenX, ly = e.screenY;
-    //     const move = (ev) => {
-    //       onDelta(ev.screenX - lx, ev.screenY - ly);
-    //       lx = ev.screenX; ly = ev.screenY;
-    //     };
-    //     const up = () => {
-    //       el.removeEventListener('pointermove', move);
-    //       el.removeEventListener('pointerup', up);
-    //     };
-    //     el.addEventListener('pointermove', move);
-    //     el.addEventListener('pointerup', up);
-    //   });
-    // }
 
-    function makeResize(el) {
-      let resizing = false;
+    document.getElementById("fPlus").onclick = () => {
+
+      fontSize = Math.min(
+        48,
+        fontSize + 2
+      );
+
+      applyFont();
+    };
+
+
+    document.getElementById("fMinus").onclick = () => {
+
+      fontSize = Math.max(
+        10,
+        fontSize - 2
+      );
+
+      applyFont();
+    };
+
+
+    // -------------------------
+    // MOVE
+    // -------------------------
+
+    function makeMove(element) {
+
+      let moving = false;
+
       let lastX = 0;
       let lastY = 0;
 
-      el.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      element.addEventListener(
+        "pointerdown",
+        (e) => {
 
-        resizing = true;
-        lastX = e.screenX;
-        lastY = e.screenY;
+          e.preventDefault();
+          e.stopPropagation();
 
-        el.setPointerCapture(e.pointerId);
-      });
+          moving = true;
 
-      el.addEventListener('pointermove', (e) => {
-        if (!resizing) return;
+          lastX = e.screenX;
+          lastY = e.screenY;
 
-        const dx = e.screenX - lastX;
-        const dy = e.screenY - lastY;
+          element.setPointerCapture(
+            e.pointerId
+          );
+        }
+      );
 
-        if (dx === 0 && dy === 0) return;
 
-        lastX = e.screenX;
-        lastY = e.screenY;
+      element.addEventListener(
+        "pointermove",
+        (e) => {
 
-        window.electronAPI.resizeBy(dx, dy);
-      });
+          if (!moving)
+            return;
 
-      el.addEventListener('pointerup', (e) => {
-        resizing = false;
+          const dx =
+            e.screenX - lastX;
 
-        try {
-          el.releasePointerCapture(e.pointerId);
-        } catch { }
-      });
+          const dy =
+            e.screenY - lastY;
+
+          lastX = e.screenX;
+          lastY = e.screenY;
+
+          if (dx === 0 && dy === 0)
+            return;
+
+          window.electronAPI.moveBy(
+            dx,
+            dy
+          );
+        }
+      );
+
+
+      element.addEventListener(
+        "pointerup",
+        (e) => {
+
+          moving = false;
+
+          try {
+
+            element.releasePointerCapture(
+              e.pointerId
+            );
+
+          } catch { }
+        }
+      );
+
+
+      element.addEventListener(
+        "pointercancel",
+        () => {
+
+          moving = false;
+
+        }
+      );
     }
 
-    function makeMove(el) {
-    let moving = false;
-    let lastX = 0;
-    let lastY = 0;
 
-    el.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+    // -------------------------
+    // RESIZE
+    // -------------------------
 
-        moving = true;
-        lastX = e.screenX;
-        lastY = e.screenY;
+    function makeResize(element) {
 
-        el.setPointerCapture(e.pointerId);
-    });
+      let resizing = false;
 
-    el.addEventListener('pointermove', (e) => {
-        if (!moving) return;
+      let lastX = 0;
+      let lastY = 0;
 
-        const dx = e.screenX - lastX;
-        const dy = e.screenY - lastY;
 
-        if (dx === 0 && dy === 0) return;
+      element.addEventListener(
+        "pointerdown",
+        (e) => {
 
-        lastX = e.screenX;
-        lastY = e.screenY;
+          e.preventDefault();
+          e.stopPropagation();
 
-        window.electronAPI.moveBy(dx, dy);
-    });
+          resizing = true;
 
-    el.addEventListener('pointerup', (e) => {
-        moving = false;
+          lastX = e.screenX;
+          lastY = e.screenY;
 
-        try {
-            el.releasePointerCapture(e.pointerId);
-        } catch {}
-    });
-}
-    makeResize(document.getElementById('grip'));
-    makeMove(document.getElementById('handle'));
+          element.setPointerCapture(
+            e.pointerId
+          );
+        }
+      );
 
-    // makeDrag(document.getElementById('handle'), (dx, dy) => window.electronAPI.moveBy(dx, dy));
-    // makeDrag(document.getElementById('grip'), (dx, dy) => window.electronAPI.resizeBy(dx, dy));
 
-    window.electronAPI.onEditMode((on) => panel.classList.toggle('edit', on));
-    window.electronAPI.onShowMode((on) => panel.classList.toggle('hidden', !on));
-    window.electronAPI.onTranslationStatus((msg) => { status.textContent = msg; });
-    window.electronAPI.onTranslationResult((t) => {
-      status.textContent = 'Çeviri';
-      translated.textContent = t;
-    });
+      element.addEventListener(
+        "pointermove",
+        (e) => {
+
+          if (!resizing)
+            return;
+
+          const dw =
+            e.screenX - lastX;
+
+          const dh =
+            e.screenY - lastY;
+
+          lastX = e.screenX;
+          lastY = e.screenY;
+
+          if (dw === 0 && dh === 0)
+            return;
+
+          window.electronAPI.resizeBy(
+            dw,
+            dh
+          );
+        }
+      );
+
+
+      element.addEventListener(
+        "pointerup",
+        (e) => {
+
+          resizing = false;
+
+          try {
+
+            element.releasePointerCapture(
+              e.pointerId
+            );
+
+          } catch { }
+        }
+      );
+
+
+      element.addEventListener(
+        "pointercancel",
+        () => {
+
+          resizing = false;
+
+        }
+      );
+    }
+
+
+    makeMove(
+      document.getElementById("handle")
+    );
+
+    makeResize(
+      document.getElementById("grip")
+    );
+
+
+    // -------------------------
+    // IPC
+    // -------------------------
+
+    window.electronAPI.onEditMode(
+      (on) => {
+
+        panel.classList.toggle(
+          "edit",
+          on
+        );
+
+      }
+    );
+
+
+    window.electronAPI.onShowMode(
+      (on) => {
+
+        panel.classList.toggle(
+          "hidden",
+          !on
+        );
+
+      }
+    );
+
+
+    window.electronAPI.onTranslationStatus(
+      (msg) => {
+
+        status.textContent = msg;
+
+      }
+    );
+
+
+    window.electronAPI.onTranslationResult(
+      (text) => {
+
+        status.textContent =
+          "Çeviri";
+
+        translated.textContent =
+          text;
+
+      }
+    );
+
   </script>
+
 </body>
 
 </html>

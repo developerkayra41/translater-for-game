@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
   <meta charset="UTF-8">
   <title>Screen Capture Overlay</title>
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       width: 100vw;
@@ -24,6 +26,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <canvas id="crop-canvas"></canvas>
@@ -47,12 +50,49 @@
       };
     });
 
+    function prepareForOcr(src) {
+      const scale = 3;
+      const c = document.createElement('canvas');
+      c.width = src.width * scale;
+      c.height = src.height * scale;
+
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.imageSmoothingEnabled = true;
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(src, 0, 0, c.width, c.height);
+
+      const img = x.getImageData(0, 0, c.width, c.height);
+      const px = img.data;
+
+      // Gri tonlama + ortalama parlaklık
+      let sum = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        px[i] = px[i + 1] = px[i + 2] = g;
+        sum += g;
+      }
+
+      // Koyu zemin + açık yazı ise ters çevir (Tesseract açık zemin/koyu yazıyı sever)
+      const invert = sum / (px.length / 4) < 128;
+
+      // Kontrast artır
+      for (let i = 0; i < px.length; i += 4) {
+        let g = invert ? 255 - px[i] : px[i];
+        g = (g - 128) * 1.5 + 128;
+        g = g < 0 ? 0 : g > 255 ? 255 : g;
+        px[i] = px[i + 1] = px[i + 2] = g;
+      }
+
+      x.putImageData(img, 0, 0);
+      return c;
+    }
+
     function drawOverlay(x, y, w, h) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       // Tam ekran görseli çiz
       ctx.drawImage(fullScreenImage, 0, 0, canvas.width, canvas.height);
-      
+
       // Karartma katmanı
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -108,27 +148,37 @@
       const realY = Math.min(startY, endY);
 
       // Kırpılan alanı yeni canvas'a aktar
-      const cropCanvas = document.createElement('canvas');
       const scaleX = fullScreenImage.width / canvas.width;
       const scaleY = fullScreenImage.height / canvas.height;
 
-      cropCanvas.width = width * scaleX;
-      cropCanvas.height = height * scaleY;
-      
-      const cropCtx = cropCanvas.getContext('2d');
-      cropCtx.drawImage(
+      const sourceX = Math.round(realX * scaleX);
+      const sourceY = Math.round(realY * scaleY);
+      const sourceW = Math.round(width * scaleX);
+      const sourceH = Math.round(height * scaleY);
+
+      // 1) Orijinal çözünürlükte kırp (boyutu MUTLAKA ayarla)
+      const cropCanvas = document.createElement('canvas');
+      cropCanvas.width = sourceW;
+      cropCanvas.height = sourceH;
+      cropCanvas.getContext('2d').drawImage(
         fullScreenImage,
-        realX * scaleX, realY * scaleY, width * scaleX, height * scaleY,
-        0, 0, cropCanvas.width, cropCanvas.height
+        sourceX, sourceY, sourceW, sourceH,
+        0, 0, sourceW, sourceH
       );
 
-      // Ana pencereye kırpılmış görüntüyü gönder
-      window.electronAPI.sendCroppedImage(cropCanvas.toDataURL('image/png'));
+      // 2) OCR için hazırla ve gönder
+      window.electronAPI.sendCroppedImage(
+        prepareForOcr(cropCanvas).toDataURL('image/png')
+      );
+
     });
 
     window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') window.electronAPI.sendCroppedImage('');
-});
+      if (e.key === 'Escape') window.electronAPI.sendCroppedImage('');
+    });
+
+
   </script>
 </body>
+
 </html>
