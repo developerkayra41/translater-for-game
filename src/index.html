@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Çeviri Paneli</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: transparent;
+      font-family: Segoe UI, sans-serif;
+      user-select: none;
+    }
+
+    #panel {
+      position: relative;
+      box-sizing: border-box;
+      height: 100%;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      background: rgba(15, 23, 42, 0.88);
+      color: #f1f5f9;
+      border: 1px solid #0ea5e9;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #toolbar {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    #panel.edit #toolbar {
+      display: flex;
+    }
+
+    #panel.edit {
+      border-color: #f59e0b;
+    }
+
+    #handle {
+      flex: 1;
+      cursor: move;
+      font-size: 12px;
+      color: #fbbf24;
+      padding: 4px 0;
+    }
+
+    button {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background: #334155;
+    }
+
+    #status {
+      font-size: 11px;
+      color: #7dd3fc;
+      margin-bottom: 4px;
+    }
+
+    #translated {
+      flex: 1;
+      overflow-y: auto;
+      line-height: 1.4;
+      font-size: 18px;
+      user-select: text;
+    }
+
+    #grip {
+      display: none;
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, #f59e0b 50%);
+    }
+
+    #panel.edit #grip {
+      display: block;
+    }
+
+    #panel.hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="panel">
+    <div id="toolbar">
+      <div id="handle">☰ Taşı — Alt+E ile oyuna dön</div>
+      <button id="fMinus">A−</button>
+      <button id="fPlus">A+</button>
+    </div>
+    <div id="status">Hazır — Alt+T ile alan seç</div>
+    <div id="translated"></div>
+    <div id="grip"></div>
+  </div>
+
+  <script>
+    const panel = document.getElementById('panel');
+    const status = document.getElementById('status');
+    const translated = document.getElementById('translated');
+
+    // Yazı boyutu (kaydedilir)
+    let fontSize = parseInt(localStorage.getItem('fontSize') || '18', 10);
+    function applyFont() {
+      translated.style.fontSize = fontSize + 'px';
+      localStorage.setItem('fontSize', fontSize);
+    }
+    applyFont();
+    document.getElementById('fPlus').onclick = () => { fontSize = Math.min(48, fontSize + 2); applyFont(); };
+    document.getElementById('fMinus').onclick = () => { fontSize = Math.max(10, fontSize - 2); applyFont(); };
+
+    // Taşıma ve boyutlandırma
+    // function makeDrag(el, onDelta) {
+    //   el.addEventListener('pointerdown', (e) => {
+    //     el.setPointerCapture(e.pointerId);
+    //     let lx = e.screenX, ly = e.screenY;
+    //     const move = (ev) => {
+    //       onDelta(ev.screenX - lx, ev.screenY - ly);
+    //       lx = ev.screenX; ly = ev.screenY;
+    //     };
+    //     const up = () => {
+    //       el.removeEventListener('pointermove', move);
+    //       el.removeEventListener('pointerup', up);
+    //     };
+    //     el.addEventListener('pointermove', move);
+    //     el.addEventListener('pointerup', up);
+    //   });
+    // }
+
+    function makeResize(el) {
+      let resizing = false;
+      let lastX = 0;
+      let lastY = 0;
+
+      el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+
+        resizing = true;
+        lastX = e.screenX;
+        lastY = e.screenY;
+
+        el.setPointerCapture(e.pointerId);
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (!resizing) return;
+
+        const dx = e.screenX - lastX;
+        const dy = e.screenY - lastY;
+
+        if (dx === 0 && dy === 0) return;
+
+        lastX = e.screenX;
+        lastY = e.screenY;
+
+        window.electronAPI.resizeBy(dx, dy);
+      });
+
+      el.addEventListener('pointerup', (e) => {
+        resizing = false;
+
+        try {
+          el.releasePointerCapture(e.pointerId);
+        } catch { }
+      });
+    }
+
+    function makeMove(el) {
+    let moving = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+
+        moving = true;
+        lastX = e.screenX;
+        lastY = e.screenY;
+
+        el.setPointerCapture(e.pointerId);
+    });
+
+    el.addEventListener('pointermove', (e) => {
+        if (!moving) return;
+
+        const dx = e.screenX - lastX;
+        const dy = e.screenY - lastY;
+
+        if (dx === 0 && dy === 0) return;
+
+        lastX = e.screenX;
+        lastY = e.screenY;
+
+        window.electronAPI.moveBy(dx, dy);
+    });
+
+    el.addEventListener('pointerup', (e) => {
+        moving = false;
+
+        try {
+            el.releasePointerCapture(e.pointerId);
+        } catch {}
+    });
+}
+    makeResize(document.getElementById('grip'));
+    makeMove(document.getElementById('handle'));
+
+    // makeDrag(document.getElementById('handle'), (dx, dy) => window.electronAPI.moveBy(dx, dy));
+    // makeDrag(document.getElementById('grip'), (dx, dy) => window.electronAPI.resizeBy(dx, dy));
+
+    window.electronAPI.onEditMode((on) => panel.classList.toggle('edit', on));
+    window.electronAPI.onShowMode((on) => panel.classList.toggle('hidden', !on));
+    window.electronAPI.onTranslationStatus((msg) => { status.textContent = msg; });
+    window.electronAPI.onTranslationResult((t) => {
+      status.textContent = 'Çeviri';
+      translated.textContent = t;
+    });
+  </script>
+</body>
+
+</html>

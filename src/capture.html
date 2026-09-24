@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Screen Capture Overlay</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      cursor: crosshair;
+      user-select: none;
+    }
+
+    #crop-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="crop-canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('crop-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let startX = 0, startY = 0;
+    let isSelecting = false;
+    let fullScreenImage = new Image();
+
+    // Tam ekran görseli yükle
+    window.electronAPI.onInitCapture((imageData) => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      fullScreenImage.src = imageData;
+      fullScreenImage.onload = () => {
+        drawOverlay(0, 0, 0, 0);
+      };
+    });
+
+    function drawOverlay(x, y, w, h) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Tam ekran görseli çiz
+      ctx.drawImage(fullScreenImage, 0, 0, canvas.width, canvas.height);
+      
+      // Karartma katmanı
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (w !== 0 && h !== 0) {
+        // Seçilen alanı aydınlat
+        const realX = Math.min(x, x + w);
+        const realY = Math.min(y, y + h);
+        const realW = Math.abs(w);
+        const realH = Math.abs(h);
+
+        ctx.drawImage(
+          fullScreenImage,
+          (realX / canvas.width) * fullScreenImage.width,
+          (realY / canvas.height) * fullScreenImage.height,
+          (realW / canvas.width) * fullScreenImage.width,
+          (realH / canvas.height) * fullScreenImage.height,
+          realX, realY, realW, realH
+        );
+
+        // Mavi seçim çerçevesi
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(realX, realY, realW, realH);
+      }
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      startX = e.clientX;
+      startY = e.clientY;
+      isSelecting = true;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isSelecting) return;
+      const currentX = e.clientX;
+      const currentY = e.clientY;
+      drawOverlay(startX, startY, currentX - startX, currentY - startY);
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (!isSelecting) return;
+      isSelecting = false;
+
+      const endX = e.clientX;
+      const endY = e.clientY;
+      const width = Math.abs(endX - startX);
+      const height = Math.abs(endY - startY);
+
+      if (width < 10 || height < 10) { window.electronAPI.sendCroppedImage(''); return; }
+
+      const realX = Math.min(startX, endX);
+      const realY = Math.min(startY, endY);
+
+      // Kırpılan alanı yeni canvas'a aktar
+      const cropCanvas = document.createElement('canvas');
+      const scaleX = fullScreenImage.width / canvas.width;
+      const scaleY = fullScreenImage.height / canvas.height;
+
+      cropCanvas.width = width * scaleX;
+      cropCanvas.height = height * scaleY;
+      
+      const cropCtx = cropCanvas.getContext('2d');
+      cropCtx.drawImage(
+        fullScreenImage,
+        realX * scaleX, realY * scaleY, width * scaleX, height * scaleY,
+        0, 0, cropCanvas.width, cropCanvas.height
+      );
+
+      // Ana pencereye kırpılmış görüntüyü gönder
+      window.electronAPI.sendCroppedImage(cropCanvas.toDataURL('image/png'));
+    });
+
+    window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') window.electronAPI.sendCroppedImage('');
+});
+  </script>
+</body>
+</html>

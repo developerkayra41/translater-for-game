@@ -1,0 +1,42 @@
+{
+  "name": "game-ocr-translator",
+  "version": "1.0.0",
+  "description": "Anlık Çeviri Uygulaması",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "tsc && electron .",
+    "pack": "tsc && electron-builder --win portable"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.ocr.translator",
+    "productName": "Oyun Ceviri - Kayra",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/index.html",
+      "src/capture.html"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  },
+  "dependencies": {
+    "@vitalets/google-translate-api": "^9.2.1",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "^26.15.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2"
+  }
+}
